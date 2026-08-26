@@ -53,6 +53,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Current capture state
   let currentResult = null;
+  let currentBlobUrl = null;
   let captureHistory = JSON.parse(localStorage.getItem('gofullpage_history') || '[]');
 
   // Helper: Format bytes
@@ -167,27 +168,40 @@ document.addEventListener('DOMContentLoaded', () => {
     clearInterval(progressInterval);
   }
 
-  // Convert Base64 / String data to Blob
-  function dataToBlob(dataString, mimeType) {
+  // Safe and robust Base64 / Data URL to Blob converter (No atob DOMException)
+  async function dataToBlob(dataString, mimeType = 'application/octet-stream') {
+    if (!dataString) return new Blob([], { type: mimeType });
+
     if (dataString.startsWith('data:')) {
-      const parts = dataString.split(';base64,');
-      const contentType = parts[0].split(':')[1];
-      const raw = window.atob(parts[1]);
-      const rawLength = raw.length;
-      const uInt8Array = new Uint8Array(rawLength);
-      for (let i = 0; i < rawLength; ++i) {
-        uInt8Array[i] = raw.charCodeAt(i);
+      try {
+        const res = await fetch(dataString);
+        return await res.blob();
+      } catch (fetchErr) {
+        console.warn('Fetch fallback for data URI:', fetchErr);
+        const parts = dataString.split(',');
+        const contentType = (parts[0].match(/:(.*?);/) || [])[1] || mimeType;
+        const b64 = (parts[1] || '').replace(/[\s\r\n]+/g, '');
+        const byteCharacters = atob(b64);
+        const byteArrays = [];
+        for (let offset = 0; offset < byteCharacters.length; offset += 1024) {
+          const slice = byteCharacters.slice(offset, offset + 1024);
+          const byteNumbers = new Array(slice.length);
+          for (let i = 0; i < slice.length; i++) {
+            byteNumbers[i] = slice.charCodeAt(i);
+          }
+          byteArrays.push(new Uint8Array(byteNumbers));
+        }
+        return new Blob(byteArrays, { type: contentType });
       }
-      return new Blob([uInt8Array], { type: contentType });
     } else {
       return new Blob([dataString], { type: mimeType });
     }
   }
 
   // Trigger Local File Download
-  function triggerDownload(filename, data, mimeType) {
+  async function triggerDownload(filename, data, mimeType) {
     try {
-      const blob = dataToBlob(data, mimeType);
+      const blob = await dataToBlob(data, mimeType);
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -195,7 +209,7 @@ document.addEventListener('DOMContentLoaded', () => {
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
       showToast(`💾 "${filename}" 다운로드 완료!`);
     } catch (err) {
       console.error('Download failed:', err);
@@ -204,17 +218,23 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // Render Capture Result
-  function renderResult(result) {
+  async function renderResult(result) {
     currentResult = result;
     setState('preview');
 
     // Update Meta
     previewFileName.textContent = result.filename;
     previewFileSize.textContent = formatBytes(result.sizeBytes);
-    previewDuration.textContent = `${result.durationSeconds}s 소요`;
+    previewDuration.textContent = `${result.durationSeconds || '0.0'}s 소요`;
     previewDimension.textContent = result.dimensions
       ? `${result.dimensions.width} × ${result.dimensions.height}px`
       : result.format.toUpperCase();
+
+    // Clean previous blob URL if any
+    if (currentBlobUrl) {
+      URL.revokeObjectURL(currentBlobUrl);
+      currentBlobUrl = null;
+    }
 
     // Toggle format viewers
     pngViewer.classList.add('hidden');
@@ -227,10 +247,14 @@ document.addEventListener('DOMContentLoaded', () => {
       modalPreviewImage.src = result.data;
     } else if (result.format === 'pdf') {
       pdfViewer.classList.remove('hidden');
-      const blob = dataToBlob(result.data, result.mimeType);
-      const blobUrl = URL.createObjectURL(blob);
-      pdfDownloadLink.href = blobUrl;
-      pdfDownloadLink.download = result.filename;
+      try {
+        const blob = await dataToBlob(result.data, result.mimeType || 'application/pdf');
+        currentBlobUrl = URL.createObjectURL(blob);
+        pdfDownloadLink.href = currentBlobUrl;
+        pdfDownloadLink.download = result.filename;
+      } catch (e) {
+        console.error('PDF Blob URL creation error:', e);
+      }
     } else if (result.format === 'html') {
       htmlViewer.classList.remove('hidden');
       previewHtmlCode.textContent = result.data.substring(0, 15000) + (result.data.length > 15000 ? '\n\n... [이하 생략 - 로컬 다운로드 시 전체 DOM 포함]' : '');
@@ -262,7 +286,7 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       localStorage.setItem('gofullpage_history', JSON.stringify(captureHistory));
     } catch (e) {
-      console.warn('LocalStorage limit reached for history images', e);
+      console.warn('LocalStorage quota limit reached for history', e);
     }
   }
 
@@ -285,11 +309,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Attach click events
     document.querySelectorAll('.history-item').forEach((btn) => {
-      btn.addEventListener('click', () => {
+      btn.addEventListener('click', async () => {
         const idx = parseInt(btn.dataset.index, 10);
         const item = captureHistory[idx];
         if (item) {
-          renderResult(item);
+          await renderResult(item);
           showToast(`📋 이전 캡처 "${item.filename}" 불러옴`);
         }
       });
@@ -344,7 +368,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       stopProgressAnimation();
-      renderResult(json);
+      await renderResult(json);
       showToast('🎉 전체 페이지 캡처가 완료되었습니다!');
     } catch (err) {
       stopProgressAnimation();
@@ -365,9 +389,9 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // Download Trigger
-  const handleDownload = () => {
+  const handleDownload = async () => {
     if (!currentResult) return;
-    triggerDownload(currentResult.filename, currentResult.data, currentResult.mimeType);
+    await triggerDownload(currentResult.filename, currentResult.data, currentResult.mimeType);
   };
   downloadBtn.addEventListener('click', handleDownload);
   directSaveBtn.addEventListener('click', handleDownload);
@@ -380,8 +404,7 @@ document.addEventListener('DOMContentLoaded', () => {
         await navigator.clipboard.writeText(currentResult.data);
         showToast('📋 HTML DOM 소스가 클립보드에 복사되었습니다.');
       } else if (currentResult.format === 'png') {
-        // Copy image blob to clipboard if supported
-        const blob = dataToBlob(currentResult.data, currentResult.mimeType);
+        const blob = await dataToBlob(currentResult.data, currentResult.mimeType);
         await navigator.clipboard.write([
           new ClipboardItem({ 'image/png': blob })
         ]);
@@ -392,7 +415,6 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     } catch (e) {
       console.warn('Clipboard copy failed:', e);
-      // Fallback
       showToast('다운로드 버튼을 통해 저장해주세요.');
     }
   });
