@@ -1,0 +1,19 @@
+{
+  "version": 2,
+  "functions": {
+    "api/capture.js": {
+      "memory": 2048,
+      "maxDuration": 60
+    }
+  },
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "/api/$1"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/public/$1"
+    }
+  ]
+}

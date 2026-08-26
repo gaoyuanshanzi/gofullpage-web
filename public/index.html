@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="ko" class="h-full">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GoFullPage Web | 전체 페이지 웹 캡처 & 저장 도구</title>
+  <meta name="description" content="고해상도 전체 페이지 스크린샷, PDF 변환, HTML DOM 저장을 지원하는 웹 기반 캡처 도구" />
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%232563EB'><path d='M4 4h3l2-2h6l2 2h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zm8 3a5 5 0 1 0 0 10 5 5 0 0 0 0-10zm0 2a3 3 0 1 1 0 6 3 3 0 0 1 0-6z'/></svg>" />
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Custom Styling -->
+  <link rel="stylesheet" href="/css/style.css" />
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#EFF6FF',
+              100: '#DBEAFE',
+              500: '#3B82F6',
+              600: '#2563EB',
+              700: '#1D4ED8',
+              900: '#1E3A8A',
+            },
+            surface: {
+              DEFAULT: '#FFFFFF',
+              muted: '#F8F9FA',
+              border: '#E5E7EB',
+              dark: '#111827',
+            }
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="h-full bg-[#F8F9FA] text-slate-800 font-sans antialiased overflow-hidden flex flex-col">
+
+  <!-- TOP NAVIGATION / BRAND BAR -->
+  <header class="h-14 bg-white border-b border-surface-border px-6 flex items-center justify-between shrink-0 z-20">
+    <div class="flex items-center gap-3">
+      <div class="w-8 h-8 rounded-lg bg-brand-600 text-white flex items-center justify-center shadow-sm shadow-brand-500/20">
+        <i data-lucide="camera" class="w-4 h-4"></i>
+      </div>
+      <div>
+        <h1 class="text-base font-bold text-slate-900 tracking-tight flex items-center gap-2">
+          GoFullPage <span class="text-brand-600 font-extrabold text-xs px-2 py-0.5 bg-brand-50 rounded-full border border-brand-100 uppercase tracking-wide">Web Pro</span>
+        </h1>
+      </div>
+    </div>
+
+    <!-- Quick Status / Badge Info -->
+    <div class="flex items-center gap-3">
+      <div class="hidden sm:flex items-center gap-2 text-xs text-slate-500 bg-slate-50 px-3 py-1.5 rounded-md border border-slate-200">
+        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+        <span>Puppeteer Engine Ready</span>
+      </div>
+      <a href="https://github.com" target="_blank" id="ghRepoLink" class="text-xs font-medium text-slate-600 hover:text-slate-900 flex items-center gap-1.5 px-3 py-1.5 bg-white rounded-md border border-slate-200 hover:bg-slate-50 transition-colors shadow-2xs">
+        <i data-lucide="github" class="w-3.5 h-3.5"></i>
+        <span>GitHub</span>
+      </a>
+    </div>
+  </header>
+
+  <!-- MAIN SPLIT WORKSPACE -->
+  <main class="flex-1 flex flex-col md:flex-row overflow-hidden relative">
+
+    <!-- LEFT PANEL: URL Input & Controls & Live URL View -->
+    <section class="w-full md:w-1/2 h-full flex flex-col bg-white border-r border-surface-border overflow-hidden z-10">
+      
+      <!-- Input & Configuration Box -->
+      <div class="p-5 border-b border-surface-border bg-white flex flex-col gap-4 shadow-xs">
+        <div>
+          <div class="flex items-center justify-between mb-1.5">
+            <label for="urlInput" class="text-xs font-semibold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+              <i data-lucide="globe" class="w-3.5 h-3.5 text-brand-600"></i>
+              대상 웹페이지 URL
+            </label>
+            <!-- Sample URL Pills -->
+            <div class="flex items-center gap-1.5 text-xs text-slate-500">
+              <span class="text-[11px] text-slate-400">샘플:</span>
+              <button type="button" class="sample-url-btn px-2 py-0.5 bg-slate-100 hover:bg-slate-200 rounded text-slate-700 text-[11px] font-medium transition" data-url="https://news.ycombinator.com">HN</button>
+              <button type="button" class="sample-url-btn px-2 py-0.5 bg-slate-100 hover:bg-slate-200 rounded text-slate-700 text-[11px] font-medium transition" data-url="https://github.com">GitHub</button>
+              <button type="button" class="sample-url-btn px-2 py-0.5 bg-slate-100 hover:bg-slate-200 rounded text-slate-700 text-[11px] font-medium transition" data-url="https://wikipedia.org">Wiki</button>
+            </div>
+          </div>
+
+          <div class="relative flex items-center">
+            <input 
+              type="text" 
+              id="urlInput" 
+              placeholder="예: https://example.com 또는 github.com"
+              value="https://news.ycombinator.com"
+              class="w-full pl-10 pr-10 py-2.5 bg-[#F8F9FA] border border-slate-200 rounded-lg text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-600 transition"
+            />
+            <div class="absolute left-3 text-slate-400">
+              <i data-lucide="link" class="w-4 h-4"></i>
+            </div>
+            <button id="clearUrlBtn" type="button" class="absolute right-3 text-slate-400 hover:text-slate-600 transition hidden">
+              <i data-lucide="x" class="w-4 h-4"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Format Selector & Advanced Options -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          
+          <!-- Format Select -->
+          <div class="sm:col-span-1">
+            <label class="text-xs font-semibold uppercase tracking-wider text-slate-500 block mb-1.5 flex items-center gap-1">
+              <i data-lucide="file-output" class="w-3.5 h-3.5 text-brand-600"></i>
+              저장 포맷
+            </label>
+            <div class="relative">
+              <select id="formatSelect" class="w-full appearance-none pl-3 pr-8 py-2 bg-[#F8F9FA] border border-slate-200 rounded-lg text-sm text-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-600 transition">
+                <option value="png" selected>PNG (고화질 이미지)</option>
+                <option value="pdf">PDF (A4 문서)</option>
+                <option value="html">HTML (DOM 소스)</option>
+              </select>
+              <div class="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                <i data-lucide="chevron-down" class="w-4 h-4"></i>
+              </div>
+            </div>
+          </div>
+
+          <!-- Viewport Emulation -->
+          <div class="sm:col-span-1">
+            <label class="text-xs font-semibold uppercase tracking-wider text-slate-500 block mb-1.5 flex items-center gap-1">
+              <i data-lucide="monitor" class="w-3.5 h-3.5 text-slate-500"></i>
+              해상도
+            </label>
+            <div class="relative">
+              <select id="viewportSelect" class="w-full appearance-none pl-3 pr-8 py-2 bg-[#F8F9FA] border border-slate-200 rounded-lg text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-600 transition">
+                <option value="1920x1080x2" selected>FHD (1920×1080 @2x)</option>
+                <option value="2560x1440x2">QHD (2560×1440 @2x)</option>
+                <option value="3840x2160x1">4K UHD (3840×2160)</option>
+                <option value="375x812x3">Mobile (iPhone 375×812)</option>
+              </select>
+              <div class="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                <i data-lucide="chevron-down" class="w-4 h-4"></i>
+              </div>
+            </div>
+          </div>
+
+          <!-- Action Button -->
+          <div class="sm:col-span-1 flex flex-col justify-end">
+            <button 
+              id="captureBtn" 
+              type="button" 
+              class="w-full py-2 px-4 bg-brand-600 hover:bg-brand-700 active:bg-brand-800 text-white text-sm font-semibold rounded-lg shadow-sm hover:shadow transition flex items-center justify-center gap-2 group cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <i data-lucide="sparkles" class="w-4 h-4 transition-transform group-hover:scale-110"></i>
+              <span>캡처 시작</span>
+            </button>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Live Webpage Preview Header & Frame -->
+      <div class="flex-1 flex flex-col bg-[#F8F9FA] overflow-hidden">
+        <div class="h-10 px-4 bg-white border-b border-surface-border flex items-center justify-between shrink-0">
+          <div class="flex items-center gap-2 text-xs font-semibold text-slate-600">
+            <i data-lucide="eye" class="w-3.5 h-3.5 text-slate-400"></i>
+            <span>실시간 URL 미리보기</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <button id="refreshLiveFrameBtn" title="새로고침" class="p-1 rounded text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition">
+              <i data-lucide="rotate-cw" class="w-3.5 h-3.5"></i>
+            </button>
+            <a id="openExternalUrlBtn" href="https://news.ycombinator.com" target="_blank" title="새 탭에서 열기" class="p-1 rounded text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition">
+              <i data-lucide="external-link" class="w-3.5 h-3.5"></i>
+            </a>
+          </div>
+        </div>
+
+        <div class="flex-1 relative overflow-hidden bg-slate-100">
+          <!-- Frame Container -->
+          <iframe 
+            id="livePreviewFrame" 
+            src="https://news.ycombinator.com" 
+            class="w-full h-full border-0 bg-white"
+            sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+          ></iframe>
+
+          <!-- Iframe Fallback Banner (when sites block iframe via X-Frame-Options) -->
+          <div id="iframeNotice" class="absolute bottom-3 left-3 right-3 bg-white/95 backdrop-blur-xs border border-slate-200 rounded-lg p-2.5 text-xs text-slate-600 flex items-center justify-between shadow-sm">
+            <div class="flex items-center gap-2">
+              <i data-lucide="info" class="w-4 h-4 text-blue-500 shrink-0"></i>
+              <span>일부 사이트(X-Frame 방어 정책)는 좌측 미리보기가 제한될 수 있으나 <b>우측 캡처는 서버에서 100% 정상 작동</b>합니다.</span>
+            </div>
+            <button onclick="document.getElementById('iframeNotice').style.display='none'" class="text-slate-400 hover:text-slate-600 ml-2">
+              <i data-lucide="x" class="w-3.5 h-3.5"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- RIGHT PANEL: Capture Result, Live Progress & Download Functions -->
+    <section class="w-full md:w-1/2 h-full flex flex-col bg-[#F8F9FA] overflow-hidden">
+      
+      <!-- Result Control Bar -->
+      <div class="h-14 px-5 bg-white border-b border-surface-border flex items-center justify-between shrink-0 shadow-2xs">
+        <div class="flex items-center gap-2">
+          <span class="text-xs font-bold uppercase tracking-wider text-slate-600 flex items-center gap-1.5">
+            <i data-lucide="image" class="w-4 h-4 text-brand-600"></i>
+            캡처 결과 및 다운로드
+          </span>
+          <span id="resultBadge" class="hidden text-[11px] font-semibold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+            완료
+          </span>
+        </div>
+
+        <!-- Download & Tools Action Group -->
+        <div class="flex items-center gap-2">
+          <button 
+            id="downloadBtn" 
+            type="button" 
+            disabled 
+            class="px-3.5 py-1.5 bg-surface-dark hover:bg-black text-white text-xs font-semibold rounded-lg flex items-center gap-1.5 transition disabled:opacity-40 disabled:cursor-not-allowed shadow-xs cursor-pointer"
+          >
+            <i data-lucide="download" class="w-3.5 h-3.5"></i>
+            <span>로컬 다운로드</span>
+          </button>
+
+          <button 
+            id="copyContentBtn" 
+            type="button" 
+            disabled
+            title="클립보드로 복사" 
+            class="p-1.5 bg-white hover:bg-slate-100 text-slate-600 border border-slate-200 rounded-lg transition disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            <i data-lucide="copy" class="w-4 h-4"></i>
+          </button>
+
+          <button 
+            id="fullscreenModalBtn" 
+            type="button" 
+            disabled
+            title="전체화면 확대" 
+            class="p-1.5 bg-white hover:bg-slate-100 text-slate-600 border border-slate-200 rounded-lg transition disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            <i data-lucide="maximize-2" class="w-4 h-4"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Result Content Area -->
+      <div class="flex-1 p-5 overflow-auto flex flex-col relative" id="resultContainer">
+        
+        <!-- INITIAL EMPTY STATE -->
+        <div id="emptyState" class="m-auto flex flex-col items-center justify-center text-center max-w-sm py-12">
+          <div class="w-16 h-16 rounded-2xl bg-white border border-slate-200 shadow-sm flex items-center justify-center text-slate-400 mb-4">
+            <i data-lucide="scan" class="w-8 h-8 text-brand-600 stroke-[1.5]"></i>
+          </div>
+          <h2 class="text-base font-bold text-slate-800 mb-1">캡처 결과가 여기에 표시됩니다</h2>
+          <p class="text-xs text-slate-500 mb-6 leading-relaxed">
+            좌측에서 URL과 원하는 포맷(PNG, PDF, HTML)을 선택한 뒤 <b>'캡처 시작'</b> 버튼을 눌러주세요.
+          </p>
+          <div class="flex flex-col gap-2 w-full text-left bg-white p-3.5 rounded-xl border border-slate-200 text-xs text-slate-600">
+            <div class="flex items-center gap-2">
+              <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-600 shrink-0"></i>
+              <span>지능형 전체 자동 스크롤(Auto-scroll) 지원</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-600 shrink-0"></i>
+              <span>웹폰트 및 Lazy-loading 이미지 완벽 로드</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-600 shrink-0"></i>
+              <span>Retina 2x 초고해상도 PNG 캡처 지원</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- PROGRESS / LOADING STATE -->
+        <div id="loadingState" class="m-auto flex flex-col items-center justify-center text-center max-w-md w-full py-12 hidden">
+          <!-- Animated Spinner Ring -->
+          <div class="relative mb-6">
+            <div class="w-16 h-16 rounded-full border-4 border-slate-100 border-t-brand-600 animate-spin"></div>
+            <div class="absolute inset-0 flex items-center justify-center text-brand-600">
+              <i data-lucide="camera" class="w-6 h-6 animate-pulse"></i>
+            </div>
+          </div>
+          
+          <h2 class="text-base font-bold text-slate-900 mb-1.5" id="progressStatusTitle">웹페이지를 캡처하는 중입니다...</h2>
+          <p class="text-xs text-slate-500 mb-6" id="progressStatusDesc">서버에서 헤드리스 브라우저를 기동하고 있습니다.</p>
+
+          <!-- Stepper Progress Indicator -->
+          <div class="w-full bg-white border border-slate-200 rounded-xl p-4 shadow-xs text-left space-y-3">
+            <div class="step-item flex items-center gap-3 text-xs" id="step-1">
+              <div class="step-icon w-5 h-5 rounded-full bg-brand-50 text-brand-600 border border-brand-200 flex items-center justify-center font-bold text-[10px]">1</div>
+              <span class="font-medium text-slate-700">URL 유효성 검사 및 브라우저 연결</span>
+            </div>
+            <div class="step-item flex items-center gap-3 text-xs opacity-40" id="step-2">
+              <div class="step-icon w-5 h-5 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center font-bold text-[10px]">2</div>
+              <span class="font-medium text-slate-700">페이지 렌더링 & 전체 자동 스크롤</span>
+            </div>
+            <div class="step-item flex items-center gap-3 text-xs opacity-40" id="step-3">
+              <div class="step-icon w-5 h-5 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center font-bold text-[10px]">3</div>
+              <span class="font-medium text-slate-700">포맷 인코딩 (PNG / PDF / HTML)</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- ERROR STATE -->
+        <div id="errorState" class="m-auto flex flex-col items-center justify-center text-center max-w-sm py-12 hidden">
+          <div class="w-14 h-14 rounded-2xl bg-red-50 border border-red-200 text-red-600 flex items-center justify-center mb-4">
+            <i data-lucide="alert-triangle" class="w-7 h-7"></i>
+          </div>
+          <h2 class="text-base font-bold text-slate-900 mb-1">캡처에 실패했습니다</h2>
+          <p class="text-xs text-red-600 mb-4 bg-red-50 p-3 rounded-lg border border-red-100 w-full text-left" id="errorMessage">
+            오류 내용이 표시됩니다.
+          </p>
+          <button id="retryBtn" class="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold rounded-lg transition">
+            다시 시도하기
+          </button>
+        </div>
+
+        <!-- CAPTURE PREVIEW CONTAINER (PNG / PDF / HTML) -->
+        <div id="previewState" class="flex-1 flex flex-col gap-3 hidden">
+          
+          <!-- Meta Info Header -->
+          <div class="bg-white border border-slate-200 rounded-xl p-3.5 flex flex-wrap items-center justify-between gap-3 shadow-2xs">
+            <div class="flex items-center gap-3">
+              <div id="fileTypeIcon" class="w-9 h-9 rounded-lg bg-brand-50 border border-brand-100 text-brand-600 flex items-center justify-center">
+                <i data-lucide="file-image" class="w-5 h-5"></i>
+              </div>
+              <div>
+                <h4 id="previewFileName" class="text-xs font-bold text-slate-900 max-w-[220px] sm:max-w-xs truncate">screenshot.png</h4>
+                <div class="flex items-center gap-2 text-[11px] text-slate-500 mt-0.5">
+                  <span id="previewFileSize">0 KB</span>
+                  <span>•</span>
+                  <span id="previewDimension">1920 × 1080</span>
+                  <span>•</span>
+                  <span id="previewDuration">0.0s 소요</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Quick Download Direct -->
+            <button id="directSaveBtn" class="px-3 py-1.5 bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold rounded-lg flex items-center gap-1.5 transition shadow-2xs">
+              <i data-lucide="download" class="w-3.5 h-3.5"></i>
+              <span>저장하기</span>
+            </button>
+          </div>
+
+          <!-- Preview Frame Wrapper -->
+          <div class="flex-1 bg-white border border-slate-200 rounded-xl overflow-hidden shadow-2xs relative flex flex-col">
+            
+            <!-- PNG Viewer -->
+            <div id="pngViewer" class="flex-1 overflow-auto bg-slate-100/70 p-4 flex items-start justify-center">
+              <div class="relative group max-w-full">
+                <img id="previewImage" src="" alt="Captured Screenshot" class="border border-slate-300 rounded shadow-md object-top max-w-full h-auto" />
+              </div>
+            </div>
+
+            <!-- PDF Viewer / Fallback -->
+            <div id="pdfViewer" class="flex-1 hidden flex flex-col items-center justify-center p-8 bg-slate-50 text-center">
+              <div class="w-16 h-16 rounded-2xl bg-red-50 border border-red-200 text-red-600 flex items-center justify-center mb-4">
+                <i data-lucide="file-text" class="w-8 h-8"></i>
+              </div>
+              <h4 class="text-sm font-bold text-slate-800 mb-1">PDF 문서 생성 완료</h4>
+              <p class="text-xs text-slate-500 mb-4 max-w-xs">A4 인쇄 규격의 고품질 PDF 문서가 준비되었습니다.</p>
+              <a id="pdfDownloadLink" href="#" download="" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-semibold rounded-lg flex items-center gap-2 shadow-xs transition">
+                <i data-lucide="download" class="w-4 h-4"></i>
+                <span>PDF 파일 다운로드</span>
+              </a>
+            </div>
+
+            <!-- HTML DOM Viewer -->
+            <div id="htmlViewer" class="flex-1 hidden flex flex-col overflow-hidden bg-slate-900 text-slate-100">
+              <div class="h-8 bg-slate-800 px-4 flex items-center justify-between border-b border-slate-700 text-xs text-slate-400">
+                <span class="font-mono">DOM Source Content</span>
+                <span id="htmlLinesCount" class="text-[11px]">0 lines</span>
+              </div>
+              <pre class="flex-1 overflow-auto p-4 text-xs font-mono text-emerald-400 select-all leading-relaxed whitespace-pre-wrap"><code id="previewHtmlCode"></code></pre>
+            </div>
+
+          </div>
+
+          <!-- RECENT CAPTURES HISTORY DRAWER -->
+          <div class="bg-white border border-slate-200 rounded-xl p-3 shadow-2xs">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                <i data-lucide="history" class="w-3.5 h-3.5 text-slate-400"></i>
+                최근 캡처 내역
+              </span>
+              <button id="clearHistoryBtn" class="text-[11px] text-slate-400 hover:text-slate-600">지우기</button>
+            </div>
+            <div id="historyList" class="flex items-center gap-2 overflow-x-auto pb-1 text-xs">
+              <span class="text-slate-400 text-xs">내역이 없습니다.</span>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- FULLSCREEN PREVIEW MODAL -->
+  <div id="fullscreenModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 hidden flex flex-col items-center justify-center p-4">
+    <div class="w-full max-w-6xl h-[90vh] bg-white rounded-2xl border border-slate-200 overflow-hidden flex flex-col shadow-2xl">
+      <div class="h-12 px-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+        <h4 class="text-xs font-bold text-slate-800 flex items-center gap-2">
+          <i data-lucide="maximize" class="w-4 h-4 text-brand-600"></i>
+          전체화면 고해상도 미리보기
+        </h4>
+        <button id="closeModalBtn" class="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-200 rounded-lg transition">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+      <div class="flex-1 overflow-auto p-4 bg-slate-100 flex items-start justify-center">
+        <img id="modalPreviewImage" src="" alt="Fullscreen Screenshot" class="border border-slate-300 rounded shadow-lg max-w-full" />
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST NOTIFICATION -->
+  <div id="toast" class="fixed bottom-6 right-6 bg-slate-900 text-white px-4 py-2.5 rounded-xl text-xs font-semibold shadow-lg flex items-center gap-2 transform translate-y-20 opacity-0 transition-all duration-300 z-50">
+    <i data-lucide="check" class="w-4 h-4 text-emerald-400"></i>
+    <span id="toastMessage">알림</span>
+  </div>
+
+  <!-- SCRIPTS -->
+  <script src="/js/app.js"></script>
+</body>
+</html>
