@@ -1,3 +1,10 @@
+// Ensure AWS Lambda / Vercel runtime is properly recognized BEFORE any other imports
+if (process.env.VERCEL || process.env.AWS_REGION || process.env.NOW_REGION) {
+  process.env.AWS_LAMBDA_JS_RUNTIME = 'nodejs20.x';
+  process.env.FONTCONFIG_PATH = '/tmp/fonts';
+  process.env.LD_LIBRARY_PATH = ['/tmp/al2023/lib', '/tmp/al2/lib', '/tmp/lib', process.env.LD_LIBRARY_PATH].filter(Boolean).join(':');
+}
+
 const { captureWebPage } = require('../lib/captureService');
 
 // Vercel Serverless Function handler
